@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+database.db
+
+work/
+.agents/
+.codex/
+.outputs/
+
+venv/
+.venv/
+.env
+
+static/uploads/*
+!static/uploads/.gitkeep

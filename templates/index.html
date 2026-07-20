@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Clean Community | A cleaner, healthier village{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="container hero-grid">
+    <div class="hero-copy">
+      <span class="eyebrow"><i class="fa-solid fa-heart"></i> For a healthier community</span>
+      <h1>A clean village.<br><em>A healthy future.</em></h1>
+      <p>Report sanitation problems, learn simple hygiene habits, and help make your community a happier place to live.</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="{{ url_for('register') }}"><i class="fa-solid fa-user-plus"></i> Join Clean Community</a>
+        <a class="btn btn-light" href="#learn"><i class="fa-solid fa-circle-play"></i> Learn About Hygiene</a>
+      </div>
+      <div class="hero-trust"><span><i class="fa-solid fa-circle-check"></i> Easy to use</span><span><i class="fa-solid fa-circle-check"></i> Free for everyone</span></div>
+    </div>
+    <div class="hero-art" aria-hidden="true">
+      <div class="sun"></div><div class="cloud cloud-one"></div><div class="cloud cloud-two"></div>
+      <div class="hill hill-back"></div><div class="hill hill-front"></div>
+      <div class="house"><span class="roof"></span><span class="door"></span><span class="window"></span></div>
+      <div class="tree tree-one"><i></i></div><div class="tree tree-two"><i></i></div>
+      <div class="hero-card card-report"><i class="fa-solid fa-clipboard-check"></i><span>Issue reported</span><b>Thank you!</b></div>
+      <div class="hero-card card-clean"><i class="fa-solid fa-sparkles"></i><span>Working together</span><b>For a clean village</b></div>
+    </div>
+  </div>
+</section>
+
+<section class="intro-section">
+  <div class="container centered-copy">
+    <span class="eyebrow eyebrow-green">Small actions, big change</span>
+    <h2>Keeping our village clean is everyone’s responsibility.</h2>
+    <p>Clean surroundings prevent illness, protect children, and make life better for every family.</p>
+  </div>
+</section>
+
+<section id="learn" class="section section-soft">
+  <div class="container">
+    <div class="section-heading"><div><span class="eyebrow eyebrow-green">Simple things that matter</span><h2>Learn about a healthy community</h2></div><p>Easy habits can keep our families, water, and surroundings safe.</p></div>
+    <div class="info-grid">
+      <article class="info-card"><span class="feature-icon icon-green"><i class="fa-solid fa-broom-ball"></i></span><h3>Proper waste disposal</h3><p>Put waste in bins and keep streets, drains, and common spaces clean.</p></article>
+      <article class="info-card"><span class="feature-icon icon-blue"><i class="fa-solid fa-hands-bubbles"></i></span><h3>Personal hygiene</h3><p>Wash hands with soap before eating and after using the toilet.</p></article>
+      <article class="info-card"><span class="feature-icon icon-aqua"><i class="fa-solid fa-droplet"></i></span><h3>Clean water</h3><p>Keep drinking water covered and report any unsafe water source quickly.</p></article>
+      <article class="info-card"><span class="feature-icon icon-orange"><i class="fa-solid fa-people-group"></i></span><h3>Government awareness</h3><p>Join local cleanliness drives and share healthy habits with neighbours.</p></article>
+    </div>
+  </div>
+</section>
+
+<section class="section action-banner">
+  <div class="container action-content">
+    <div><span class="eyebrow">Your voice makes a difference</span><h2>See a sanitation problem?</h2><p>Tell us about it in a few simple steps. Together, we can bring it to the right people.</p></div>
+    <a class="btn btn-white" href="{{ url_for('register') }}"><i class="fa-solid fa-bullhorn"></i> Report an Issue</a>
+  </div>
+</section>
+{% endblock %}

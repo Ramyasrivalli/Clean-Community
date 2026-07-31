@@ -1,0 +1,34 @@
+{# Reusable weather panel for the home page and resident dashboard. #}
+{% if weather %}
+  <section class="weather-panel{% if weather.alerts %} weather-panel--with-alerts{% else %} weather-panel--standalone{% endif %}" aria-labelledby="weather-title">
+    <div class="weather-card">
+      <div class="weather-card-main">
+        <div>
+          <span class="weather-label"><i class="fa-solid fa-cloud-sun"></i> Live community weather</span>
+          <h2 id="weather-title">{{ weather.city }}</h2>
+          <p class="weather-condition">{{ weather.condition }}</p>
+        </div>
+        <img class="weather-icon" src="{{ weather.icon_url }}" alt="{{ weather.condition }} weather icon" width="96" height="96">
+        <p class="weather-temperature">{{ weather.temperature }}<sup>°C</sup></p>
+      </div>
+      <div class="weather-details" aria-label="Weather details">
+        <span><i class="fa-solid fa-droplet"></i> Humidity <b>{{ weather.humidity }}%</b></span>
+        <span><i class="fa-solid fa-wind"></i> Wind <b>{{ weather.wind_speed }} m/s</b></span>
+      </div>
+    </div>
+    {% if weather.alerts %}
+      <aside class="sanitation-alerts" aria-label="Sanitation alerts">
+        <h3><i class="fa-solid fa-shield-heart"></i> Sanitation alert</h3>
+        {% for alert in weather.alerts %}
+          <p><span aria-hidden="true">{{ alert.icon }}</span>{{ alert.message }}</p>
+        {% endfor %}
+      </aside>
+    {% endif %}
+  </section>
+{% else %}
+  {# Keep the layout helpful when the weather provider is temporarily unavailable. #}
+  <section class="weather-panel weather-unavailable" aria-label="Weather unavailable">
+    <i class="fa-solid fa-cloud-sun-rain"></i>
+    <div><strong>Live weather is temporarily unavailable.</strong><p>Sanitation services remain available—please try weather again later.</p></div>
+  </section>
+{% endif %}

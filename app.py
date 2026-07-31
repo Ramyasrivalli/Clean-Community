@@ -24,11 +24,15 @@ from flask import (
     session,
     url_for,
 )
+from dotenv import load_dotenv
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
+from weather_service import WeatherService
 
 
 BASE_DIR = Path(__file__).resolve().parent
+# Load local secrets before Flask and the weather service read environment settings.
+load_dotenv(BASE_DIR / ".env")
 DATABASE_PATH = BASE_DIR / "database.db"
 UPLOAD_FOLDER = BASE_DIR / "static" / "uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
@@ -48,7 +52,11 @@ app.config.update(
     SECRET_KEY=os.environ.get("SECRET_KEY", "change-this-demo-secret-before-deploying"),
     UPLOAD_FOLDER=str(UPLOAD_FOLDER),
     MAX_CONTENT_LENGTH=5 * 1024 * 1024,  # Keep uploads manageable for this portal.
+    WEATHER_CITY=os.environ.get("WEATHER_CITY", "New Delhi,IN"),
 )
+
+# Keep all OpenWeatherMap requests and alert decisions in one reusable service.
+weather_service = WeatherService(os.environ.get("OPENWEATHER_API_KEY"))
 
 
 def get_db() -> sqlite3.Connection:
@@ -110,7 +118,11 @@ def current_user() -> sqlite3.Row | None:
     user_id = session.get("user_id")
     if not user_id:
         return None
-    return get_db().execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    user = get_db().execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    if user is None:
+        # Remove stale browser sessions when their resident record no longer exists.
+        session.pop("user_id", None)
+    return user
 
 
 @app.context_processor
@@ -123,7 +135,8 @@ def login_required(view):
     """Require a resident session for user-only features."""
     @wraps(view)
     def wrapped_view(*args, **kwargs):
-        if not session.get("user_id"):
+        # Validate the stored id, not just its presence, before opening a protected page.
+        if current_user() is None:
             flash("Please log in to continue.", "error")
             return redirect(url_for("login"))
         return view(*args, **kwargs)
@@ -151,62 +164,14 @@ def upload_too_large(_error):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
-
-
-@app.route("/public-dashboard")
-def public_dashboard():
-    """Show village-wide complaint statistics to anyone, without requiring login."""
-    stats = {"total": 0, "pending": 0, "resolved": 0}
-    village_rows: list[sqlite3.Row] = []
-    cleanest_village = None
-    error = None
-
-    try:
-        db = get_db()
-        stats_row = db.execute(
-            """SELECT COUNT(*) AS total,
-                      SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) AS pending,
-                      SUM(CASE WHEN status = 'Resolved' THEN 1 ELSE 0 END) AS resolved
-               FROM complaints"""
-        ).fetchone()
-        stats = {
-            "total": stats_row["total"] or 0,
-            "pending": stats_row["pending"] or 0,
-            "resolved": stats_row["resolved"] or 0,
-        }
-
-        # Group by village using aggregation so the whole table never has to be
-        # loaded into memory. Complaints with a blank/missing village are excluded
-        # since they cannot be attributed to any village.
-        village_rows = db.execute(
-            """SELECT village,
-                      COUNT(*) AS total,
-                      SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) AS pending,
-                      SUM(CASE WHEN status = 'Resolved' THEN 1 ELSE 0 END) AS resolved
-               FROM complaints
-               WHERE village IS NOT NULL AND TRIM(village) <> ''
-               GROUP BY village
-               ORDER BY pending ASC, resolved DESC"""
-        ).fetchall()
-
-        if village_rows:
-            cleanest_village = village_rows[0]["village"]
-    except sqlite3.Error:
-        error = "Community statistics are temporarily unavailable. Please try again shortly."
-
-    return render_template(
-        "public_dashboard.html",
-        stats=stats,
-        village_rows=village_rows,
-        cleanest_village=cleanest_village,
-        error=error,
-    )
+    # The public homepage uses the configurable community city from .env.
+    weather = weather_service.get_current_weather(app.config["WEATHER_CITY"])
+    return render_template("index.html", weather=weather)
 
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    if session.get("user_id"):
+    if current_user():
         return redirect(url_for("dashboard"))
 
     if request.method == "POST":
@@ -245,7 +210,7 @@ def register():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if session.get("user_id"):
+    if current_user():
         return redirect(url_for("dashboard"))
 
     if request.method == "POST":
@@ -275,6 +240,7 @@ def logout():
 def dashboard():
     db = get_db()
     user_id = session["user_id"]
+    user = current_user()
     stats = db.execute(
         """SELECT COUNT(*) AS total,
                   SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) AS pending,
@@ -282,7 +248,9 @@ def dashboard():
            FROM complaints WHERE user_id = ?""",
         (user_id,),
     ).fetchone()
-    return render_template("dashboard.html", stats=stats)
+    # A resident's saved village provides the most relevant location for their dashboard.
+    weather = weather_service.get_current_weather(user["village"])
+    return render_template("dashboard.html", stats=stats, weather=weather)
 
 
 @app.route("/report", methods=["GET", "POST"])

@@ -154,6 +154,56 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/public-dashboard")
+def public_dashboard():
+    """Show village-wide complaint statistics to anyone, without requiring login."""
+    stats = {"total": 0, "pending": 0, "resolved": 0}
+    village_rows: list[sqlite3.Row] = []
+    cleanest_village = None
+    error = None
+
+    try:
+        db = get_db()
+        stats_row = db.execute(
+            """SELECT COUNT(*) AS total,
+                      SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) AS pending,
+                      SUM(CASE WHEN status = 'Resolved' THEN 1 ELSE 0 END) AS resolved
+               FROM complaints"""
+        ).fetchone()
+        stats = {
+            "total": stats_row["total"] or 0,
+            "pending": stats_row["pending"] or 0,
+            "resolved": stats_row["resolved"] or 0,
+        }
+
+        # Group by village using aggregation so the whole table never has to be
+        # loaded into memory. Complaints with a blank/missing village are excluded
+        # since they cannot be attributed to any village.
+        village_rows = db.execute(
+            """SELECT village,
+                      COUNT(*) AS total,
+                      SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) AS pending,
+                      SUM(CASE WHEN status = 'Resolved' THEN 1 ELSE 0 END) AS resolved
+               FROM complaints
+               WHERE village IS NOT NULL AND TRIM(village) <> ''
+               GROUP BY village
+               ORDER BY pending ASC, resolved DESC"""
+        ).fetchall()
+
+        if village_rows:
+            cleanest_village = village_rows[0]["village"]
+    except sqlite3.Error:
+        error = "Community statistics are temporarily unavailable. Please try again shortly."
+
+    return render_template(
+        "public_dashboard.html",
+        stats=stats,
+        village_rows=village_rows,
+        cleanest_village=cleanest_village,
+        error=error,
+    )
+
+
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if session.get("user_id"):

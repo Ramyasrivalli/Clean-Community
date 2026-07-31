@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block title %}Public Dashboard | Clean Community{% endblock %}
+{% block content %}
+<section class="admin-hero"><div class="container"><span class="eyebrow"><i class="fa-solid fa-chart-simple"></i> Open to everyone</span><h1>Community complaint dashboard</h1><p>A live, public look at how our village is doing on sanitation and hygiene.</p></div></section>
+<section class="dashboard-content"><div class="container">
+
+  {% if error %}
+    <div class="empty-state"><span><i class="fa-solid fa-triangle-exclamation"></i></span><h2>{{ error }}</h2><p>Please refresh the page in a moment.</p></div>
+  {% else %}
+
+    <div class="admin-stat-grid">
+      <div class="admin-stat-card"><span class="feature-icon icon-aqua"><i class="fa-solid fa-clipboard-list"></i></span><p>Total Complaints</p><b>{{ stats['total'] }}</b></div>
+      <div class="admin-stat-card"><span class="feature-icon icon-green"><i class="fa-solid fa-circle-check"></i></span><p>Resolved Complaints</p><b>{{ stats['resolved'] }}</b></div>
+      <div class="admin-stat-card"><span class="feature-icon icon-orange"><i class="fa-solid fa-clock"></i></span><p>Pending Complaints</p><b>{{ stats['pending'] }}</b></div>
+      <div class="admin-stat-card"><span class="feature-icon icon-blue"><i class="fa-solid fa-broom-ball"></i></span><p>Cleanest Village/Ward</p><b class="stat-text">{{ cleanest_village or 'No Data' }}</b></div>
+    </div>
+
+    {% if stats['total'] == 0 %}
+      <div class="empty-state"><span><i class="fa-regular fa-clipboard"></i></span><h2>No Data</h2><p>Once residents start reporting issues, community statistics will appear here.</p></div>
+    {% else %}
+      <div class="chart-grid">
+        <div class="chart-card">
+          <h3>Complaint Status</h3>
+          <canvas id="statusPieChart" role="img" aria-label="Pie chart of pending versus resolved complaints"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Complaints by Village/Ward</h3>
+          <canvas id="villageBarChart" role="img" aria-label="Bar chart of complaints per village"></canvas>
+        </div>
+      </div>
+    {% endif %}
+
+  {% endif %}
+
+</div></section>
+{% endblock %}
+{% block scripts %}
+{% if not error and stats['total'] > 0 %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js" referrerpolicy="no-referrer"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const pendingCount = {{ stats['pending'] }};
+    const resolvedCount = {{ stats['resolved'] }};
+    const villageLabels = {{ village_rows | map(attribute='village') | list | tojson }};
+    const villageTotals = {{ village_rows | map(attribute='total') | list | tojson }};
+
+    new Chart(document.getElementById('statusPieChart'), {
+      type: 'pie',
+      data: {
+        labels: ['Pending', 'Resolved'],
+        datasets: [{ data: [pendingCount, resolvedCount], backgroundColor: ['#ec9632', '#168a62'] }]
+      },
+      options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    });
+
+    new Chart(document.getElementById('villageBarChart'), {
+      type: 'bar',
+      data: {
+        labels: villageLabels,
+        datasets: [{ label: 'Complaints', data: villageTotals, backgroundColor: '#287db8', borderRadius: 6 }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+      }
+    });
+  });
+</script>
+{% endif %}
+{% endblock %}
